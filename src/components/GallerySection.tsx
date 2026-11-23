@@ -1,85 +1,99 @@
-import {ChevronLeft, ChevronRight, ImagePlus, X} from 'lucide-react';
+import {ChevronLeft, ChevronRight, Expand, X} from 'lucide-react';
 import {AnimatePresence, motion} from 'motion/react';
 import {useEffect, useState} from 'react';
-import {HotelPhoto, PhotoSection, SECTION_LABELS} from '../types/media';
-import {MediaFrame} from './MediaFrame';
+import {
+  GALLERY_HIGHLIGHT_IDS,
+  HOTEL_ANJALI_PHOTOS,
+  HotelPhoto,
+  PhotoCategory,
+} from '../data/hotelAnjaliPhotos';
+import {useLanguage} from '../i18n/LanguageContext';
+import {TiltCard} from './TiltCard';
 
 interface GallerySectionProps {
-  photos: HotelPhoto[];
-  onUploadDirect: (files: FileList, section: PhotoSection) => void;
-  onOpenStudio: () => void;
   inspectedPhoto: HotelPhoto | null;
   onInspect: (photo: HotelPhoto | null) => void;
 }
 
-type GalleryFilter = 'all' | PhotoSection;
-
-const FILTER_OPTIONS: Array<{id: GalleryFilter; label: string}> = [
-  {id: 'all', label: 'All Photos'},
-  {id: 'hero', label: 'Exterior'},
-  {id: 'rooms', label: 'Rooms'},
-  {id: 'restaurant', label: 'Restaurant'},
-  {id: 'food', label: 'Food'},
-  {id: 'gallery', label: 'Highlights'},
-];
+type GalleryFilter = 'highlights' | 'all' | PhotoCategory;
 
 export function GallerySection({
-  photos,
-  onUploadDirect,
-  onOpenStudio,
   inspectedPhoto,
   onInspect,
 }: GallerySectionProps) {
-  const [filter, setFilter] = useState<GalleryFilter>('all');
+  const {t, getPhotoCopy} = useLanguage();
+  const [filter, setFilter] = useState<GalleryFilter>('highlights');
+
+  const filterOptions: Array<{id: GalleryFilter; label: string}> = [
+    {id: 'highlights', label: t.gallery.tabs.highlights},
+    {id: 'exterior', label: t.gallery.tabs.exterior},
+    {id: 'rooms', label: t.gallery.tabs.rooms},
+    {id: 'restaurant', label: t.gallery.tabs.restaurant},
+    {id: 'food', label: t.gallery.tabs.food},
+    {id: 'events', label: t.gallery.tabs.events},
+    {id: 'all', label: `${t.gallery.tabs.all} (${HOTEL_ANJALI_PHOTOS.length})`},
+  ];
 
   const filteredPhotos =
-    filter === 'all' ? photos : photos.filter((p) => p.section === filter);
+    filter === 'highlights'
+      ? HOTEL_ANJALI_PHOTOS.filter((p) => GALLERY_HIGHLIGHT_IDS.has(p.id))
+      : filter === 'all'
+        ? HOTEL_ANJALI_PHOTOS
+        : HOTEL_ANJALI_PHOTOS.filter((p) => p.category === filter);
 
   const inspectedIndex = inspectedPhoto
-    ? photos.findIndex((p) => p.id === inspectedPhoto.id)
+    ? HOTEL_ANJALI_PHOTOS.findIndex((p) => p.id === inspectedPhoto.id)
     : -1;
+  const inspectedCopy = inspectedPhoto ? getPhotoCopy(inspectedPhoto) : null;
 
   useEffect(() => {
     if (!inspectedPhoto) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onInspect(null);
-      } else if (e.key === 'ArrowRight' && photos.length > 1) {
-        const nextIdx = (inspectedIndex + 1) % photos.length;
-        onInspect(photos[nextIdx]);
-      } else if (e.key === 'ArrowLeft' && photos.length > 1) {
-        const prevIdx = (inspectedIndex - 1 + photos.length) % photos.length;
-        onInspect(photos[prevIdx]);
+      } else if (e.key === 'ArrowRight') {
+        const nextIdx = (inspectedIndex + 1) % HOTEL_ANJALI_PHOTOS.length;
+        onInspect(HOTEL_ANJALI_PHOTOS[nextIdx]);
+      } else if (e.key === 'ArrowLeft') {
+        const prevIdx =
+          (inspectedIndex - 1 + HOTEL_ANJALI_PHOTOS.length) %
+          HOTEL_ANJALI_PHOTOS.length;
+        onInspect(HOTEL_ANJALI_PHOTOS[prevIdx]);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [inspectedPhoto, inspectedIndex, photos, onInspect]);
+  }, [inspectedPhoto, inspectedIndex, onInspect]);
+
+  const gridColsClass =
+    filteredPhotos.length === 4
+      ? 'grid-cols-1 sm:grid-cols-2'
+      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
 
   return (
-    <section id="gallery" className="bg-[#FAF7F2] py-20 sm:py-28 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6 lg:px-10">
-        {/* Header & Filter Controls */}
-        <div className="flex flex-col gap-8 border-b border-[#171310]/12 pb-10 lg:flex-row lg:items-end lg:justify-between">
+    <section id="gallery" className="surface-ivory-silk py-20 sm:py-28 lg:py-32 transition-colors duration-300">
+      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10">
+        {/* Header & Filter Tabs */}
+        <div className="flex flex-col gap-8 border-b border-[#0B1528]/14 dark:border-[#D4AF5F]/22 pb-10 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#8C6239]">
-              04 · Visual Gallery
+            <p className="text-xs font-semibold tracking-[0.22em] uppercase text-[#9A712C] dark:text-[#F4DFB0]">
+              {t.gallery.eyebrow}
             </p>
-            <h2 className="mt-3 font-display text-[clamp(2rem,3.6vw,3.25rem)] font-normal leading-[1.1] tracking-tight text-[#171310]">
-              Inside Hotel Anjali.
+            <h2 className="mt-3 font-display text-[clamp(2rem,3.6vw,3.25rem)] font-normal leading-[1.08] tracking-tight text-[#0B1528] dark:text-[#FBF7EE]">
+              {t.gallery.headline}
             </h2>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            {FILTER_OPTIONS.map((option) => (
+          <div className="flex max-w-full flex-wrap items-center gap-1.5">
+            {filterOptions.map((option) => (
               <button
                 key={option.id}
                 type="button"
                 onClick={() => setFilter(option.id)}
-                className={`px-3.5 py-2 text-xs font-medium whitespace-nowrap shrink-0 transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8C6239] ${
+                className={`max-w-full px-3.5 py-2 text-xs font-medium sm:whitespace-nowrap transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9A712C] ${
                   filter === option.id
-                    ? 'bg-[#171310] text-[#FAF7F2]'
-                    : 'bg-[#F0EBE2] text-[#171310]/70 hover:text-[#171310]'
+                    ? 'bg-gradient-to-r from-[#091326] to-[#132544] text-[#FBF7EE] dark:from-[#D4AF5F] dark:to-[#B68B3C] dark:text-[#070E1A] dark:font-semibold shadow-[0_8px_20px_rgba(9,19,38,0.28)] hover:from-[#B68B3C] hover:to-[#D4AF5F] hover:text-[#070E1A]'
+                    : 'border border-[#D4AF5F]/25 bg-[#FFFDF8] dark:bg-[#0E1B33] text-[#0B1528]/78 dark:text-[#FBF7EE]/80 hover:border-[#D4AF5F] hover:bg-[#F3EBDC] dark:hover:bg-[#16294B] hover:text-[#0B1528] dark:hover:text-[#F4DFB0]'
                 }`}
               >
                 {option.label}
@@ -88,88 +102,68 @@ export function GallerySection({
           </div>
         </div>
 
-        {/* Asymmetric Gallery Grid */}
-        {filteredPhotos.length > 0 ? (
-          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-12">
-            {filteredPhotos.map((photo, idx) => {
-              const spanClass =
-                idx % 5 === 0
-                  ? 'lg:col-span-8'
-                  : idx % 5 === 1
-                    ? 'lg:col-span-4'
-                    : 'lg:col-span-4';
-              const aspectClass =
-                idx % 5 === 0
-                  ? 'aspect-[16/10]'
-                  : idx % 5 === 1
-                    ? 'aspect-[4/5] lg:aspect-auto lg:h-full'
-                    : 'aspect-[4/3]';
+        {/* Flush Museum-Framed Responsive Grid */}
+        <div className={`mt-12 grid gap-7 ${gridColsClass}`}>
+          {filteredPhotos.map((photo, idx) => {
+            const photoCopy = getPhotoCopy(photo);
+            const isHeroSpan =
+              (filteredPhotos.length === 7 || filteredPhotos.length === 10) && idx === 0;
+            const spanClass = isHeroSpan ? 'min-w-0 sm:col-span-2' : 'min-w-0';
 
-              return (
-                <motion.div
-                  key={photo.id}
-                  initial={{opacity: 0, y: 16}}
-                  whileInView={{opacity: 1, y: 0}}
-                  viewport={{once: true, margin: '-40px'}}
-                  transition={{duration: 0.5, ease: [0.16, 1, 0.3, 1]}}
-                  className={spanClass}
-                >
-                  <MediaFrame
-                    photo={photo}
-                    section={photo.section}
-                    slotLabel={photo.caption || SECTION_LABELS[photo.section]}
-                    aspectClass={aspectClass}
-                    variant="light"
-                    onUploadDirect={onUploadDirect}
-                    onInspect={(p) => onInspect(p)}
-                  />
-                </motion.div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-12">
-            <div className="md:col-span-7">
-              <MediaFrame
-                section="gallery"
-                slotLabel="Property Highlight"
-                aspectClass="aspect-[16/10]"
-                variant="light"
-                onUploadDirect={onUploadDirect}
-              />
-            </div>
-            <div className="md:col-span-5">
-              <MediaFrame
-                section="gallery"
-                slotLabel="Atmosphere & Details"
-                aspectClass="aspect-[4/3] md:h-full"
-                variant="light"
-                onUploadDirect={onUploadDirect}
-              />
-            </div>
-          </div>
-        )}
+            return (
+              <motion.figure
+                key={photo.id}
+                initial={{opacity: 0, y: 16}}
+                whileInView={{opacity: 1, y: 0}}
+                viewport={{once: true, margin: '-40px'}}
+                transition={{duration: 0.45, ease: [0.16, 1, 0.3, 1]}}
+                className={spanClass}
+              >
+                <TiltCard className="h-full" maxTilt={isHeroSpan ? 2.5 : 4} liftPx={7}>
+                  <div className="card-luxury-lift group flex h-full flex-col border border-[#D4AF5F]/28 bg-[#FFFDF8] dark:bg-[#0E1B33] p-2.5">
+                    <button
+                      type="button"
+                      onClick={() => onInspect(photo)}
+                      aria-label={`${t.gallery.openLightboxPrefix} ${photoCopy.title}`}
+                      className={`relative block w-full overflow-hidden bg-[#ECE2CE] dark:bg-[#091326] text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9A712C] ${
+                        isHeroSpan ? 'aspect-[16/9]' : 'aspect-[4/3]'
+                      }`}
+                    >
+                      <img
+                        src={photo.src}
+                        alt={photoCopy.title}
+                        loading="lazy"
+                        className={`h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] ${
+                          photo.aspectHint === 'portrait' ? 'object-[50%_40%]' : 'object-center'
+                        }`}
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070E1A]/65 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                      <span className="pointer-events-none absolute bottom-3 right-3 inline-flex h-8 w-8 items-center justify-center border border-[#F4DFB0]/40 bg-[#070E1A]/75 text-[#F4DFB0] opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <Expand className="h-3.5 w-3.5" />
+                      </span>
+                    </button>
 
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-[#171310]/10 pt-8">
-          <p className="text-sm text-[#171310]/65">
-            {photos.length > 0
-              ? `Displaying ${filteredPhotos.length} of ${photos.length} uploaded Hotel Anjali photographs.`
-              : 'Upload original Hotel Anjali photos to populate the full gallery and lightbox.'}
-          </p>
-          <button
-            type="button"
-            onClick={onOpenStudio}
-            className="inline-flex items-center gap-2 border border-[#171310]/20 bg-[#F0EBE2] px-5 py-2.5 text-xs font-medium tracking-wider uppercase text-[#171310] whitespace-nowrap shrink-0 transition-colors hover:border-[#171310] hover:bg-[#E7DFD3]"
-          >
-            <ImagePlus className="h-4 w-4 text-[#8C6239]" />
-            <span>{photos.length > 0 ? 'Add or Organize Photos' : 'Open Photo Studio'}</span>
-          </button>
+                    <figcaption className="flex items-baseline justify-between gap-3 px-2 pb-1.5 pt-3.5">
+                      <div>
+                        <p className="text-[11px] font-semibold tracking-widest uppercase text-[#9A712C] dark:text-[#F4DFB0]">
+                          {t.gallery.categories[photo.category]}
+                        </p>
+                        <p className="mt-0.5 font-serif text-xl text-[#0B1528] dark:text-[#FBF7EE]">
+                          {photoCopy.title}
+                        </p>
+                      </div>
+                    </figcaption>
+                  </div>
+                </TiltCard>
+              </motion.figure>
+            );
+          })}
         </div>
       </div>
 
-      {/* Fullscreen Keyboard-Accessible Lightbox */}
+      {/* Keyboard-Accessible Fullscreen Lightbox */}
       <AnimatePresence>
-        {inspectedPhoto && (
+        {inspectedPhoto && inspectedCopy && (
           <motion.div
             initial={{opacity: 0}}
             animate={{opacity: 1}}
@@ -177,75 +171,78 @@ export function GallerySection({
             transition={{duration: 0.2}}
             role="dialog"
             aria-modal="true"
-            aria-label="Photograph lightbox"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#171310]/95 p-4 sm:p-8 backdrop-blur-sm"
+            aria-label={t.gallery.lightboxAria}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#060C18]/96 p-4 sm:p-8 backdrop-blur-md"
             onClick={() => onInspect(null)}
           >
             <div
               className="relative flex max-h-full w-full max-w-5xl flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-4 flex w-full items-center justify-between gap-4 text-[#FAF7F2]">
-                <div className="flex items-center gap-3 text-xs tracking-widest uppercase text-[#FAF7F2]/70">
-                  <span className="text-[#B88B58]">
-                    {SECTION_LABELS[inspectedPhoto.section]}
+              <div className="mb-4 flex w-full items-center justify-between gap-4 text-[#FBF7EE]">
+                <div className="flex items-center gap-3 text-xs tracking-widest uppercase text-[#FBF7EE]/78">
+                  <span className="text-[#F4DFB0]">
+                    {t.gallery.categories[inspectedPhoto.category]}
                   </span>
                   <span aria-hidden="true">·</span>
                   <span className="tabular-nums">
-                    {inspectedIndex + 1} / {photos.length}
+                    {inspectedIndex + 1} / {HOTEL_ANJALI_PHOTOS.length}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => onInspect(null)}
-                  aria-label="Close lightbox"
-                  className="inline-flex h-10 w-10 items-center justify-center border border-[#FAF7F2]/20 text-[#FAF7F2] transition-colors hover:bg-[#FAF7F2]/10"
+                  aria-label={t.gallery.closeLightboxAria}
+                  className="inline-flex h-10 w-10 items-center justify-center border border-[#D4AF5F]/35 bg-[#0D192E] text-[#FBF7EE] transition-all duration-200 hover:border-[#F4DFB0] hover:bg-gradient-to-r hover:from-[#D4AF5F] hover:to-[#B68B3C] hover:text-[#070E1A] hover:shadow-[0_8px_20px_rgba(212,175,95,0.34)]"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="relative flex max-h-[75vh] w-full items-center justify-center overflow-hidden border border-[#FAF7F2]/12 bg-[#110E0C]">
+              <div className="relative flex max-h-[75vh] w-full items-center justify-center overflow-hidden border border-[#D4AF5F]/30 bg-[#091326]">
                 <img
-                  src={inspectedPhoto.dataUrl}
-                  alt={inspectedPhoto.caption || 'Hotel Anjali photograph'}
-                  referrerPolicy="no-referrer"
+                  src={inspectedPhoto.src}
+                  alt={inspectedCopy.title}
                   className="max-h-[75vh] w-auto max-w-full object-contain"
                 />
 
-                {photos.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const prevIdx =
-                          (inspectedIndex - 1 + photos.length) % photos.length;
-                        onInspect(photos[prevIdx]);
-                      }}
-                      aria-label="Previous photograph"
-                      className="absolute left-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[#FAF7F2]/20 bg-[#171310]/70 text-[#FAF7F2] transition-colors hover:bg-[#171310]"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextIdx = (inspectedIndex + 1) % photos.length;
-                        onInspect(photos[nextIdx]);
-                      }}
-                      aria-label="Next photograph"
-                      className="absolute right-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[#FAF7F2]/20 bg-[#171310]/70 text-[#FAF7F2] transition-colors hover:bg-[#171310]"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prevIdx =
+                      (inspectedIndex - 1 + HOTEL_ANJALI_PHOTOS.length) %
+                      HOTEL_ANJALI_PHOTOS.length;
+                    onInspect(HOTEL_ANJALI_PHOTOS[prevIdx]);
+                  }}
+                  aria-label={t.gallery.prevPhotoAria}
+                  className="absolute left-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[#D4AF5F]/35 bg-[#070E1A]/80 text-[#FBF7EE] transition-all duration-200 hover:border-[#F4DFB0] hover:bg-gradient-to-r hover:from-[#D4AF5F] hover:to-[#B68B3C] hover:text-[#070E1A] hover:shadow-[0_8px_22px_rgba(212,175,95,0.36)]"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextIdx =
+                      (inspectedIndex + 1) % HOTEL_ANJALI_PHOTOS.length;
+                    onInspect(HOTEL_ANJALI_PHOTOS[nextIdx]);
+                  }}
+                  aria-label={t.gallery.nextPhotoAria}
+                  className="absolute right-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[#D4AF5F]/35 bg-[#070E1A]/80 text-[#FBF7EE] transition-all duration-200 hover:border-[#F4DFB0] hover:bg-gradient-to-r hover:from-[#D4AF5F] hover:to-[#B68B3C] hover:text-[#070E1A] hover:shadow-[0_8px_22px_rgba(212,175,95,0.36)]"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
 
-              <p className="mt-4 font-serif text-xl text-[#FAF7F2]">
-                {inspectedPhoto.caption || inspectedPhoto.name}
-              </p>
+              <div className="mt-4 text-center">
+                <p className="font-serif text-2xl text-[#FBF7EE]">
+                  {inspectedCopy.title}
+                </p>
+                <p className="mt-1 text-sm text-[#F4DFB0]/75">
+                  {inspectedCopy.subtitle}
+                </p>
+              </div>
             </div>
           </motion.div>
         )}

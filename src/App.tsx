@@ -1,176 +1,138 @@
-import {MotionConfig} from 'motion/react';
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {MotionConfig, motion, useScroll} from 'motion/react';
+import {useState} from 'react';
 import {AboutSection} from './components/AboutSection';
+import {AmbientThreeBackground} from './components/AmbientThreeBackground';
+import {CustomScrollbar} from './components/CustomScrollbar';
+import {EventsSection} from './components/EventsSection';
+import {FaqSection} from './components/FaqSection';
+import {FloatingWhatsAppButton} from './components/FloatingWhatsAppButton';
 import {Footer} from './components/Footer';
 import {GallerySection} from './components/GallerySection';
+import {GuestExperiencesSection} from './components/GuestExperiencesSection';
 import {Hero} from './components/Hero';
 import {LocationContactSection} from './components/LocationContactSection';
 import {Navbar} from './components/Navbar';
-import {PhotoStudioDrawer} from './components/PhotoStudioDrawer';
 import {RestaurantSection} from './components/RestaurantSection';
 import {RoomsSection} from './components/RoomsSection';
-import {HotelPhoto, PhotoSection} from './types/media';
-import {
-  clearAllSavedPhotos,
-  deleteSavedPhoto,
-  fileToDataUrl,
-  inferPhotoSection,
-  loadSavedPhotos,
-  savePhoto,
-} from './utils/storage';
+import {SectionDivider} from './components/SectionDivider';
+import {WhatsAppModal} from './components/WhatsAppModal';
+import {HotelPhoto} from './data/hotelAnjaliPhotos';
+import {LanguageProvider} from './i18n/LanguageContext';
+import {ThemeProvider} from './theme/ThemeContext';
 
 export default function App() {
-  const [photos, setPhotos] = useState<HotelPhoto[]>([]);
-  const [studioOpen, setStudioOpen] = useState(false);
   const [inspectedPhoto, setInspectedPhoto] = useState<HotelPhoto | null>(null);
-
-  useEffect(() => {
-    loadSavedPhotos().then((saved) => {
-      if (saved.length > 0) setPhotos(saved);
-    });
-  }, []);
-
-  const handleUploadFiles = useCallback(
-    async (files: FileList, forcedSection?: PhotoSection) => {
-      const counts: Record<PhotoSection, number> = {
-        hero: 0,
-        about: 0,
-        rooms: 0,
-        restaurant: 0,
-        food: 0,
-        gallery: 0,
-      };
-      photos.forEach((p) => {
-        counts[p.section] += 1;
-      });
-
-      const created: HotelPhoto[] = [];
-      for (let i = 0; i < files.length; i += 1) {
-        const file = files[i];
-        if (!file.type.startsWith('image/')) continue;
-        const dataUrl = await fileToDataUrl(file);
-        const section = forcedSection || inferPhotoSection(file.name, counts);
-        counts[section] += 1;
-
-        const item: HotelPhoto = {
-          id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
-          name: file.name,
-          section,
-          dataUrl,
-          addedAt: Date.now() + i,
-        };
-        await savePhoto(item);
-        created.push(item);
-      }
-
-      if (created.length > 0) {
-        setPhotos((prev) => [...prev, ...created]);
-      }
-    },
-    [photos],
-  );
-
-  const handleUpdatePhoto = useCallback(
-    async (
-      id: string,
-      updates: Partial<Pick<HotelPhoto, 'section' | 'caption'>>,
-    ) => {
-      setPhotos((prev) =>
-        prev.map((item) => {
-          if (item.id !== id) return item;
-          const next = {...item, ...updates};
-          savePhoto(next);
-          return next;
-        }),
-      );
-    },
-    [],
-  );
-
-  const handleDeletePhoto = useCallback(async (id: string) => {
-    await deleteSavedPhoto(id);
-    setPhotos((prev) => prev.filter((item) => item.id !== id));
-    setInspectedPhoto((prev) => (prev?.id === id ? null : prev));
-  }, []);
-
-  const handleClearAll = useCallback(async () => {
-    await clearAllSavedPhotos();
-    setPhotos([]);
-    setInspectedPhoto(null);
-  }, []);
-
-  const categorized = useMemo(() => {
-    const heroPhoto = photos.find((p) => p.section === 'hero');
-    const aboutPhoto = photos.find((p) => p.section === 'about') ?? photos.find((p) => p.section === 'hero' && p.id !== heroPhoto?.id);
-    const roomPhotos = photos.filter((p) => p.section === 'rooms');
-    const restaurantPhotos = photos.filter((p) => p.section === 'restaurant');
-    const foodPhotos = photos.filter((p) => p.section === 'food');
-    return {
-      heroPhoto,
-      aboutPhoto,
-      roomPhotos,
-      restaurantPhotos,
-      foodPhotos,
-    };
-  }, [photos]);
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const {scrollYProgress} = useScroll();
 
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="min-h-screen overflow-x-clip bg-[#FAF7F2] text-[#171310]">
-        <Navbar
-          onOpenStudio={() => setStudioOpen(true)}
-          photoCount={photos.length}
-        />
+    <ThemeProvider>
+      <LanguageProvider>
+        <MotionConfig reducedMotion="user">
+          <div className="min-h-screen w-full max-w-full overflow-x-clip bg-[#FBF7EE] text-[#0B1528] dark:bg-[#050A14] dark:text-[#FBF7EE] transition-colors duration-300">
+            <AmbientThreeBackground />
 
-        <main>
-          <Hero
-            heroPhoto={categorized.heroPhoto}
-            onOpenStudio={() => setStudioOpen(true)}
-            totalPhotos={photos.length}
-          />
+            {/* Hairline metallic gold scroll depth indicator (compositor transform only) */}
+            <motion.div
+              aria-hidden="true"
+              style={{scaleX: scrollYProgress}}
+              className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[2.5px] origin-left bg-gradient-to-r from-[#B68B3C] via-[#F4DFB0] to-[#D4AF5F] shadow-[0_0_10px_rgba(212,175,95,0.55)]"
+            />
 
-          <AboutSection
-            aboutPhoto={categorized.aboutPhoto}
-            onUploadDirect={handleUploadFiles}
-            onInspect={setInspectedPhoto}
-          />
+            <Navbar onOpenWhatsApp={() => setWhatsAppOpen(true)} />
+            <CustomScrollbar />
 
-          <RoomsSection
-            roomPhotos={categorized.roomPhotos}
-            onUploadDirect={handleUploadFiles}
-            onInspect={setInspectedPhoto}
-          />
+            <main id="main-content" className="w-full max-w-full">
+              <Hero />
+              <SectionDivider
+                variant="wave"
+                from="#070E1A"
+                to="#FBF7EE"
+                darkFrom="#050A14"
+                darkTo="#091224"
+              />
+              <AboutSection onInspect={setInspectedPhoto} />
+              <SectionDivider
+                variant="crest"
+                from="#FBF7EE"
+                to="#F3EBDC"
+                darkFrom="#091224"
+                darkTo="#0D182C"
+              />
+              <RoomsSection onInspect={setInspectedPhoto} />
+              <SectionDivider
+                variant="wave"
+                from="#F3EBDC"
+                to="#070E1A"
+                darkFrom="#0D182C"
+                darkTo="#050A14"
+                flip
+              />
+              <RestaurantSection onInspect={setInspectedPhoto} />
+              <SectionDivider
+                variant="wave"
+                from="#070E1A"
+                to="#F5EFE4"
+                darkFrom="#050A14"
+                darkTo="#0D182C"
+              />
+              <EventsSection onInspect={setInspectedPhoto} />
+              <SectionDivider
+                variant="crest"
+                from="#F5EFE4"
+                to="#FBF7EE"
+                darkFrom="#0D182C"
+                darkTo="#091224"
+              />
+              <GallerySection
+                inspectedPhoto={inspectedPhoto}
+                onInspect={setInspectedPhoto}
+              />
+              <SectionDivider
+                variant="wave"
+                from="#FBF7EE"
+                to="#070E1A"
+                darkFrom="#091224"
+                darkTo="#050A14"
+                flip
+              />
+              <GuestExperiencesSection />
+              <SectionDivider
+                variant="wave"
+                from="#070E1A"
+                to="#FBF7EE"
+                darkFrom="#050A14"
+                darkTo="#091224"
+              />
+              <FaqSection />
+              <SectionDivider
+                variant="crest"
+                from="#FBF7EE"
+                to="#F3EBDC"
+                darkFrom="#091224"
+                darkTo="#0D182C"
+              />
+              <LocationContactSection onOpenWhatsApp={() => setWhatsAppOpen(true)} />
+            </main>
 
-          <RestaurantSection
-            restaurantPhotos={categorized.restaurantPhotos}
-            foodPhotos={categorized.foodPhotos}
-            onUploadDirect={handleUploadFiles}
-            onInspect={setInspectedPhoto}
-          />
+            <SectionDivider
+              variant="wave"
+              from="#FBF7EE"
+              to="#070E1A"
+              darkFrom="#091224"
+              darkTo="#050A14"
+              flip
+            />
+            <Footer />
 
-          <GallerySection
-            photos={photos}
-            onUploadDirect={handleUploadFiles}
-            onOpenStudio={() => setStudioOpen(true)}
-            inspectedPhoto={inspectedPhoto}
-            onInspect={setInspectedPhoto}
-          />
-
-          <LocationContactSection />
-        </main>
-
-        <Footer />
-
-        <PhotoStudioDrawer
-          open={studioOpen}
-          onClose={() => setStudioOpen(false)}
-          photos={photos}
-          onUploadFiles={handleUploadFiles}
-          onUpdatePhoto={handleUpdatePhoto}
-          onDeletePhoto={handleDeletePhoto}
-          onClearAll={handleClearAll}
-        />
-      </div>
-    </MotionConfig>
+            <FloatingWhatsAppButton />
+            <WhatsAppModal
+              open={whatsAppOpen}
+              onClose={() => setWhatsAppOpen(false)}
+            />
+          </div>
+        </MotionConfig>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
