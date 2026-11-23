@@ -1,0 +1,6 @@
+{
+  "name": "Hotel Anjali",
+  "description": "Luxury Hotel & Restaurant hospitality showcase for Hotel Anjali.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
